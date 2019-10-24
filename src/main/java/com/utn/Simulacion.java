@@ -6,8 +6,10 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class Simulacion {
@@ -19,17 +21,34 @@ public class Simulacion {
     public void run() {
         List<String[]> rows = getRows(file);
 
-        List<LocalDateTime> departures = getLocalDateTimeValueOfStation(rows, 3, 1);
-        List<LocalDateTime> departuresFromAnotherStation = getLocalDateTimeValueOfStation(rows, 5, 1);
+        generateSampleForArrivals(rows, "partidas.txt", 3);
+
+        generateSampleForArrivals(rows, "arribos.txt", 5);
+
+        //generateSampleForAtentionTime(rows);
+    }
+
+    private void generateSampleForAtentionTime(List<String[]> rows) {
         List<LocalTime> transportsTime = getLocalTimeValueOfStation(rows, 5, 2);
-
-        List<Long> timeInSecondsDeparture = mapToTimeInSecondsLocalDateTime(departures);
-        List<Long> timeInSecondsDepartureFromAnotherStation = mapToTimeInSecondsLocalDateTime(departuresFromAnotherStation);
         List<Long> timeInSecondsTransport = mapToTimeInSecondsLocalTime(transportsTime);
-
-        writeInFile(timeInSecondsDeparture, "partidas.txt");
-        writeInFile(timeInSecondsDepartureFromAnotherStation, "arribos.txt");
         writeInFile(timeInSecondsTransport, "tiempoDeViaje.txt");
+    }
+
+    private void generateSampleForArrivals(List<String[]> rows, String fileToWrite, int rowToCheck) {
+        List<LocalDateTime> departuresFromAnotherStation = getSampleByFilter(rows, row -> row[rowToCheck].equals(station), 1);
+        List<Long> timeInSecondsDepartureFromAnotherStation = mapToTimeInSecondsLocalDateTime(departuresFromAnotherStation);
+        List<Long> elapsedTimeArrivals = calculateElapsedTime(timeInSecondsDepartureFromAnotherStation);
+        writeInFile(elapsedTimeArrivals, fileToWrite);
+    }
+
+
+    private List<Long> calculateElapsedTime(List<Long> timeInSecondsDeparture) {
+        List<Long> elapsedTimeDepartures = new ArrayList<>(timeInSecondsDeparture.size());
+        elapsedTimeDepartures.add(timeInSecondsDeparture.get(0));
+        for (int i = 1; i < timeInSecondsDeparture.size(); i++ ){
+            elapsedTimeDepartures.add(timeInSecondsDeparture.get(i) - timeInSecondsDeparture.get(i - 1));
+        }
+        return elapsedTimeDepartures;
     }
 
     private List<LocalTime> getLocalTimeValueOfStation(List<String[]> rows, int stationColumn, int valueColumn) {
@@ -38,15 +57,15 @@ public class Simulacion {
                 .filter(row -> row[stationColumn].equals(station))
                 .map(row -> row[valueColumn])
                 .map(departure -> LocalTime.parse(departure, dateTimeFormat))
+                .sorted()
                 .collect(Collectors.toList());
     }
 
     private List<Long> mapToTimeInSecondsLocalDateTime(List<LocalDateTime> localDateTimes) {
-        TemporalUnit temporalUnit = ChronoUnit.HOURS;
-        return localDateTimes.stream().map(localDateTime -> {
-            LocalDateTime dateOfTheSameCheckin = localDateTime.truncatedTo(temporalUnit);
-            return dateOfTheSameCheckin.until(localDateTime, unit);
-        }).collect(Collectors.toList());
+        TemporalUnit temporalUnit = ChronoUnit.DAYS;
+        LocalDateTime initialDate = localDateTimes.get(0).truncatedTo(temporalUnit);
+        return localDateTimes.stream().map(localDateTime -> initialDate.until(localDateTime, unit))
+                .collect(Collectors.toList());
     }
 
     private List<Long> mapToTimeInSecondsLocalTime(List<LocalTime> localTimes) {
@@ -57,12 +76,13 @@ public class Simulacion {
         }).collect(Collectors.toList());
     }
 
-    private List<LocalDateTime> getLocalDateTimeValueOfStation(List<String[]> rows, int stationColumn, int valueColumn) {
+    private List<LocalDateTime> getSampleByFilter(List<String[]> rows, Predicate<String[]> filter, int valueColumn) {
         DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         return rows.stream()
-                .filter(row -> row[stationColumn].equals(station))
+                .filter(filter)
                 .map(row -> row[valueColumn])
                 .map(departure -> LocalDateTime.parse(departure, dateTimeFormat))
+                .sorted()
                 .collect(Collectors.toList());
     }
 
