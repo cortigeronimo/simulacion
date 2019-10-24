@@ -1,9 +1,8 @@
 package com.utn;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
@@ -22,31 +21,39 @@ public class Simulacion {
 
         List<LocalDateTime> departures = getLocalDateTimeValueOfStation(rows, 3, 1);
         List<LocalDateTime> departuresFromAnotherStation = getLocalDateTimeValueOfStation(rows, 5, 1);
+        List<LocalTime> transportsTime = getLocalTimeValueOfStation(rows, 5, 2);
 
-        List<Long> timeInSecondsDeparture = mapToTimeInSeconds(departures);
-        List<Long> timeInSecondsDepartureFromAnotherStation = mapToTimeInSeconds(departuresFromAnotherStation);
+        List<Long> timeInSecondsDeparture = mapToTimeInSecondsLocalDateTime(departures);
+        List<Long> timeInSecondsDepartureFromAnotherStation = mapToTimeInSecondsLocalDateTime(departuresFromAnotherStation);
+        List<Long> timeInSecondsTransport = mapToTimeInSecondsLocalTime(transportsTime);
 
-        printSecondsTranscured(timeInSecondsDeparture, "Muestras para el retiro de bicicleta");
-        System.out.println("");
-        printSecondsTranscured(timeInSecondsDepartureFromAnotherStation, "Muestras para la partida de bicicletas desde otra estación");
+        writeInFile(timeInSecondsDeparture, "partidas.txt");
+        writeInFile(timeInSecondsDepartureFromAnotherStation, "arribos.txt");
+        writeInFile(timeInSecondsTransport, "tiempoDeViaje.txt");
     }
 
-    private void printSecondsTranscured(List<Long> timeInSecondsDeparture, String messagePrePrint) {
-        System.out.println("**************************************************");
-        System.out.println("**************************************************");
-        System.out.println("**************************************************");
-        System.out.println(messagePrePrint);
-        timeInSecondsDeparture.forEach(System.out::println);
-        System.out.println("**************************************************");
-        System.out.println("**************************************************");
-        System.out.println("**************************************************");
+    private List<LocalTime> getLocalTimeValueOfStation(List<String[]> rows, int stationColumn, int valueColumn) {
+        DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("HH:mm:ss");
+        return rows.stream()
+                .filter(row -> row[stationColumn].equals(station))
+                .map(row -> row[valueColumn])
+                .map(departure -> LocalTime.parse(departure, dateTimeFormat))
+                .collect(Collectors.toList());
     }
 
-    private List<Long> mapToTimeInSeconds(List<LocalDateTime> localDateTimes) {
+    private List<Long> mapToTimeInSecondsLocalDateTime(List<LocalDateTime> localDateTimes) {
         TemporalUnit temporalUnit = ChronoUnit.HOURS;
         return localDateTimes.stream().map(localDateTime -> {
             LocalDateTime dateOfTheSameCheckin = localDateTime.truncatedTo(temporalUnit);
             return dateOfTheSameCheckin.until(localDateTime, unit);
+        }).collect(Collectors.toList());
+    }
+
+    private List<Long> mapToTimeInSecondsLocalTime(List<LocalTime> localTimes) {
+        TemporalUnit temporalUnit = ChronoUnit.HOURS;
+        return localTimes.stream().map(localTime -> {
+            LocalTime timeZero = localTime.truncatedTo(temporalUnit);
+            return timeZero.until(localTime, unit);
         }).collect(Collectors.toList());
     }
 
@@ -73,5 +80,25 @@ public class Simulacion {
             throw new RuntimeException("Error al abrir el archivo");
         }
         return rows;
+    }
+
+    private void writeInFile(List<Long> values, String file){
+        BufferedWriter writer = null;
+        try{
+            writer = new BufferedWriter(new FileWriter(file));
+            for (Long value : values){
+                writer.write(String.valueOf(value));
+                writer.newLine();
+            }
+            writer.flush();
+        } catch (Exception e) {
+            throw new RuntimeException("Error al escribir en el archivo");
+        } finally {
+            try {
+                writer.close();
+            } catch (IOException e) {
+                throw new RuntimeException("Error cerrando el archivo");
+            }
+        }
     }
 }
