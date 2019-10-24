@@ -13,44 +13,65 @@ import java.util.stream.Collectors;
 
 public class Simulacion {
 
-    private final String station = "Estados Unidos";
+    private final String station = "Pueyrredón";
     private final String file = "recorridos-realizados-2019.csv";
     private final ChronoUnit unit = ChronoUnit.SECONDS;
 
     public void run() {
-        List<String> checkInData = getValuesOfColumn(file, station);
+        List<String[]> rows = getRows(file);
 
-        DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        List<LocalDateTime> checkinLocalDateTimeList = checkInData.stream()
-                .map(cd -> LocalDateTime.parse(cd, dateFormat))
-                .collect(Collectors.toList());
+        List<LocalDateTime> departures = getLocalDateTimeValueOfStation(rows, 3, 1);
+        List<LocalDateTime> departuresFromAnotherStation = getLocalDateTimeValueOfStation(rows, 5, 1);
 
-        List<Long> timeInSeconds = checkinLocalDateTimeList.stream().map(checkInLocalDateTime -> {
-            TemporalUnit temporalUnit = ChronoUnit.HOURS;
-            LocalDateTime dateOfTheSameCheckin = checkInLocalDateTime.truncatedTo(temporalUnit);
-            return Long.valueOf(dateOfTheSameCheckin.until(checkInLocalDateTime, unit));
-        }).collect(Collectors.toList());
+        List<Long> timeInSecondsDeparture = mapToTimeInSeconds(departures);
+        List<Long> timeInSecondsDepartureFromAnotherStation = mapToTimeInSeconds(departuresFromAnotherStation);
 
-        timeInSeconds.forEach(System.out::println);
+        printSecondsTranscured(timeInSecondsDeparture, "Muestras para el retiro de bicicleta");
+        System.out.println("");
+        printSecondsTranscured(timeInSecondsDepartureFromAnotherStation, "Muestras para la partida de bicicletas desde otra estación");
     }
 
-    private List<String> getValuesOfColumn(final String file, final String column) {
-        List<String> values = new LinkedList<>();
+    private void printSecondsTranscured(List<Long> timeInSecondsDeparture, String messagePrePrint) {
+        System.out.println("**************************************************");
+        System.out.println("**************************************************");
+        System.out.println("**************************************************");
+        System.out.println(messagePrePrint);
+        timeInSecondsDeparture.forEach(System.out::println);
+        System.out.println("**************************************************");
+        System.out.println("**************************************************");
+        System.out.println("**************************************************");
+    }
+
+    private List<Long> mapToTimeInSeconds(List<LocalDateTime> localDateTimes) {
+        TemporalUnit temporalUnit = ChronoUnit.HOURS;
+        return localDateTimes.stream().map(localDateTime -> {
+            LocalDateTime dateOfTheSameCheckin = localDateTime.truncatedTo(temporalUnit);
+            return dateOfTheSameCheckin.until(localDateTime, unit);
+        }).collect(Collectors.toList());
+    }
+
+    private List<LocalDateTime> getLocalDateTimeValueOfStation(List<String[]> rows, int stationColumn, int valueColumn) {
+        DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        return rows.stream()
+                .filter(row -> row[stationColumn].equals(station))
+                .map(row -> row[valueColumn])
+                .map(departure -> LocalDateTime.parse(departure, dateTimeFormat))
+                .collect(Collectors.toList());
+    }
+
+    private List<String[]> getRows(final String file) {
+        List<String[]> rows = new LinkedList<>();
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line = br.readLine();
             System.out.println("This are the columns:");
             System.out.println(line);
             while ((line = br.readLine()) != null) {
                 String[] columnValues = line.split(",");
-                final String destinationStation = columnValues[3];
-                if(destinationStation.equals(column)){
-                    final String checkIn = columnValues[1];
-                    values.add(checkIn);
-                }
+                rows.add(columnValues);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Error al abrir el archivo");
         }
-        return values;
+        return rows;
     }
 }
