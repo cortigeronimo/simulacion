@@ -16,16 +16,24 @@ public class Simulacion {
 
     private final String station = "Pueyrredón";
     private final String file = "recorridos-realizados-2019.csv";
-    private final ChronoUnit unit = ChronoUnit.SECONDS;
+    private final ChronoUnit timeUnit = ChronoUnit.SECONDS;
 
     public void run() {
+        System.out.println("Leyendo Archivo csv");
         List<String[]> rows = getRows(file);
+        System.out.println("Archivo leído");
 
+        System.out.println("Generando muestra para intervalo entre llegadas al puesto");
         generateSampleForArrivals(rows, "partidas.txt", 3);
+        System.out.println("Muestra Generada con éxito");
 
+        System.out.println("Generando muestra para intervalo entre partidas desde otro puesto");
         generateSampleForArrivals(rows, "arribos.txt", 5);
+        System.out.println("Muestra Generada con éxito");
 
         //generateSampleForAtentionTime(rows);
+
+        System.out.println("Programa Ejecutado de forma exitosa");
     }
 
     private void generateSampleForAtentionTime(List<String[]> rows) {
@@ -64,7 +72,7 @@ public class Simulacion {
     private List<Long> mapToTimeInSecondsLocalDateTime(List<LocalDateTime> localDateTimes) {
         TemporalUnit temporalUnit = ChronoUnit.DAYS;
         LocalDateTime initialDate = localDateTimes.get(0).truncatedTo(temporalUnit);
-        return localDateTimes.stream().map(localDateTime -> initialDate.until(localDateTime, unit))
+        return localDateTimes.stream().map(localDateTime -> initialDate.until(localDateTime, timeUnit))
                 .collect(Collectors.toList());
     }
 
@@ -72,7 +80,7 @@ public class Simulacion {
         TemporalUnit temporalUnit = ChronoUnit.HOURS;
         return localTimes.stream().map(localTime -> {
             LocalTime timeZero = localTime.truncatedTo(temporalUnit);
-            return timeZero.until(localTime, unit);
+            return timeZero.until(localTime, timeUnit);
         }).collect(Collectors.toList());
     }
 
@@ -89,9 +97,8 @@ public class Simulacion {
     private List<String[]> getRows(final String file) {
         List<String[]> rows = new LinkedList<>();
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            String line = br.readLine();
-            System.out.println("This are the columns:");
-            System.out.println(line);
+            String line;
+            br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] columnValues = line.split(",");
                 rows.add(columnValues);
@@ -112,12 +119,12 @@ public class Simulacion {
             }
             writer.flush();
         } catch (Exception e) {
-            throw new RuntimeException("Error al escribir en el archivo");
+            throw new RuntimeException("Error al escribir en el archivo " + file);
         } finally {
             try {
                 writer.close();
             } catch (IOException e) {
-                throw new RuntimeException("Error cerrando el archivo");
+                throw new RuntimeException("Error cerrando el archivo" + file);
             }
         }
     }
