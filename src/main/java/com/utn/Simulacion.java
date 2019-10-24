@@ -24,11 +24,11 @@ public class Simulacion {
         System.out.println("Archivo leído");
 
         System.out.println("Generando muestra para intervalo entre llegadas al puesto");
-        generateSampleForArrivals(rows, "partidas.txt", 3);
+        generateSample(rows, "partidas.txt", 3);
         System.out.println("Muestra Generada con éxito");
 
         System.out.println("Generando muestra para intervalo entre partidas desde otro puesto");
-        generateSampleForArrivals(rows, "arribos.txt", 5);
+        generateSample(rows, "arribos.txt", 5);
         System.out.println("Muestra Generada con éxito");
 
         //generateSampleForAtentionTime(rows);
@@ -42,7 +42,7 @@ public class Simulacion {
         writeInFile(timeInSecondsTransport, "tiempoDeViaje.txt");
     }
 
-    private void generateSampleForArrivals(List<String[]> rows, String fileToWrite, int rowToCheck) {
+    private void generateSample(List<String[]> rows, String fileToWrite, int rowToCheck) {
         List<LocalDateTime> departuresFromAnotherStation = getSampleByFilter(rows, row -> row[rowToCheck].equals(station), 1);
         List<Long> timeInSecondsDepartureFromAnotherStation = mapToTimeInSecondsLocalDateTime(departuresFromAnotherStation);
         List<Long> elapsedTimeArrivals = calculateElapsedTime(timeInSecondsDepartureFromAnotherStation);
