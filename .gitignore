@@ -3,3 +3,4 @@ out/
 simulacion.iml
 *.csv
 *.txt
+target/
