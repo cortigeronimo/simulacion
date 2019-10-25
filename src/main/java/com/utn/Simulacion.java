@@ -31,7 +31,9 @@ public class Simulacion {
         generateSample(rows, "arribos.txt", 5);
         System.out.println("Muestra Generada con éxito");
 
-        //generateSampleForAtentionTime(rows);
+        System.out.println("Generando muestra para tiempo de atención");
+        generateSampleForAtentionTime(rows);
+        System.out.println("Muestra Generada con éxito");
 
         System.out.println("Programa Ejecutado de forma exitosa");
     }
@@ -72,16 +74,17 @@ public class Simulacion {
     private List<Long> mapToTimeInSecondsLocalDateTime(List<LocalDateTime> localDateTimes) {
         TemporalUnit temporalUnit = ChronoUnit.DAYS;
         LocalDateTime initialDate = localDateTimes.get(0).truncatedTo(temporalUnit);
-        return localDateTimes.stream().map(localDateTime -> initialDate.until(localDateTime, timeUnit))
+        return localDateTimes.stream()
+                .map(localDateTime -> initialDate.until(localDateTime, timeUnit))
                 .collect(Collectors.toList());
     }
 
     private List<Long> mapToTimeInSecondsLocalTime(List<LocalTime> localTimes) {
-        TemporalUnit temporalUnit = ChronoUnit.HOURS;
-        return localTimes.stream().map(localTime -> {
-            LocalTime timeZero = localTime.truncatedTo(temporalUnit);
-            return timeZero.until(localTime, timeUnit);
-        }).collect(Collectors.toList());
+        TemporalUnit temporalUnit = ChronoUnit.DAYS;
+        LocalTime timeZero = localTimes.get(0).truncatedTo(temporalUnit);
+        return localTimes.stream()
+                .map(localTime -> timeZero.until(localTime, timeUnit))
+                .collect(Collectors.toList());
     }
 
     private List<LocalDateTime> getSampleByFilter(List<String[]> rows, Predicate<String[]> filter, int valueColumn) {
