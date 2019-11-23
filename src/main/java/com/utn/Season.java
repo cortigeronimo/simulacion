@@ -13,7 +13,7 @@ public enum Season {
     SUMMER{
         @Override
         public List<Integer> getMonths() {
-            return Arrays.asList(12, 1, 2);
+            return Arrays.asList(1, 2);
         }
     },
     FALL{
