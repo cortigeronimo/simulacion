@@ -2,5 +2,5 @@ out/
 .idea/
 simulacion.iml
 *.csv
-*.txt
+/*.txt
 target/

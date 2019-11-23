@@ -4,6 +4,7 @@ import java.io.*;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
@@ -15,37 +16,50 @@ import java.util.stream.Collectors;
 public class Simulacion {
 
     private final String station = "Pueyrredón";
-    private final String file = "recorridos-realizados-2019.csv";
     private final ChronoUnit timeUnit = ChronoUnit.SECONDS;
 
     public void run() {
-        System.out.println("Leyendo Archivo csv");
-        List<String[]> rows = getRows(file);
-        System.out.println("Archivo leído");
-
-        System.out.println("Generando muestra para intervalo entre llegadas al puesto");
-        generateSample(rows, "partidas.txt", 3);
-        System.out.println("Muestra Generada con éxito");
-
-        System.out.println("Generando muestra para intervalo entre partidas desde otro puesto");
-        generateSample(rows, "arribos.txt", 5);
-        System.out.println("Muestra Generada con éxito");
-
-        System.out.println("Generando muestra para tiempo de atención");
-        generateSampleForAtentionTime(rows);
-        System.out.println("Muestra Generada con éxito");
+        //generateResult("2019");
+        generateResult("2018");
+        //generateResult("2017");
 
         System.out.println("Programa Ejecutado de forma exitosa");
     }
 
-    private void generateSampleForAtentionTime(List<String[]> rows) {
-        List<LocalTime> transportsTime = getLocalTimeValueOfStation(rows, 5, 2);
-        List<Long> timeInSecondsTransport = mapToTimeInSecondsLocalTime(transportsTime);
-        writeInFile(timeInSecondsTransport, "tiempoDeViaje.txt");
+    private void generateResult(String year) {
+        generateResultSeasonFile(year, Season.SUMMER);
+        generateResultSeasonFile(year, Season.WINTER);
+        generateResultSeasonFile(year, Season.FALL);
+        generateResultSeasonFile(year, Season.SPRING);
     }
 
-    private void generateSample(List<String[]> rows, String fileToWrite, int rowToCheck) {
-        List<LocalDateTime> departuresFromAnotherStation = getSampleByFilter(rows, row -> row[rowToCheck].equals(station), 1);
+    private void generateResultSeasonFile(String year, Season season) {
+        final String folder = "resultados/";
+        System.out.println("Leyendo Archivo csv");
+        List<String[]> rows = getRows("recorridos-realizados-" + year + ".csv", season);
+        System.out.println("Archivo leído");
+
+        System.out.println("Generando muestra para intervalo entre llegadas al puesto");
+        generateSample(rows, folder + "partidas-" + year + "-" + season + ".txt", 4, 2);
+        System.out.println("Muestra Generada con éxito");
+
+        System.out.println("Generando muestra para intervalo entre partidas desde otro puesto");
+        generateSample(rows, folder + "arribos-" + year + "-" + season + ".txt", 11, 9);
+        System.out.println("Muestra Generada con éxito");
+
+        System.out.println("Generando muestra para tiempo de viaje");
+        generateSampleForTravelTime(rows, folder + "tiempoDeViaje-" + year + season + ".txt");
+        System.out.println("Muestra Generada con éxito");
+    }
+
+    private void generateSampleForTravelTime(List<String[]> rows, String file) {
+        List<LocalTime> transportsTime = getLocalTimeValueOfStation(rows, 4, 8);
+        List<Long> timeInSecondsTransport = mapToTimeInSecondsLocalTime(transportsTime);
+        writeInFile(timeInSecondsTransport, file);
+    }
+
+    private void generateSample(List<String[]> rows, String fileToWrite, int stationRow, int targetRow) {
+        List<LocalDateTime> departuresFromAnotherStation = getSampleByFilter(rows, row -> row[stationRow].equals(station) , targetRow);
         List<Long> timeInSecondsDepartureFromAnotherStation = mapToTimeInSecondsLocalDateTime(departuresFromAnotherStation);
         List<Long> elapsedTimeArrivals = calculateElapsedTime(timeInSecondsDepartureFromAnotherStation);
         writeInFile(elapsedTimeArrivals, fileToWrite);
@@ -54,6 +68,7 @@ public class Simulacion {
 
     private List<Long> calculateElapsedTime(List<Long> timeInSecondsDeparture) {
         List<Long> elapsedTimeDepartures = new ArrayList<>(timeInSecondsDeparture.size());
+        if(timeInSecondsDeparture.isEmpty()) return new ArrayList<>();
         elapsedTimeDepartures.add(timeInSecondsDeparture.get(0));
         for (int i = 1; i < timeInSecondsDeparture.size(); i++ ){
             elapsedTimeDepartures.add(timeInSecondsDeparture.get(i) - timeInSecondsDeparture.get(i - 1));
@@ -66,14 +81,22 @@ public class Simulacion {
         return rows.stream()
                 .filter(row -> row[stationColumn].equals(station))
                 .map(row -> row[valueColumn])
-                .map(departure -> LocalTime.parse(departure, dateTimeFormat))
+                .map(departure -> {
+                    String departureWithoutDay = departure.replace("0 days ", "");
+                    String cleanDeparture = departureWithoutDay.substring(0, departureWithoutDay.indexOf('.'));
+                    return  LocalTime.parse(cleanDeparture, dateTimeFormat);
+                })
                 .sorted()
                 .collect(Collectors.toList());
     }
 
     private List<Long> mapToTimeInSecondsLocalDateTime(List<LocalDateTime> localDateTimes) {
         TemporalUnit temporalUnit = ChronoUnit.DAYS;
-        LocalDateTime initialDate = localDateTimes.get(0).truncatedTo(temporalUnit);
+        LocalDateTime initialDate = localDateTimes.stream()
+                .findFirst()
+                .map(l -> l.truncatedTo(temporalUnit))
+                .orElse(null);
+        if(initialDate == null) return new ArrayList<>();
         return localDateTimes.stream()
                 .map(localDateTime -> initialDate.until(localDateTime, timeUnit))
                 .collect(Collectors.toList());
@@ -81,30 +104,49 @@ public class Simulacion {
 
     private List<Long> mapToTimeInSecondsLocalTime(List<LocalTime> localTimes) {
         TemporalUnit temporalUnit = ChronoUnit.DAYS;
+        if(localTimes.isEmpty()) return new ArrayList<>();
         LocalTime timeZero = localTimes.get(0).truncatedTo(temporalUnit);
         return localTimes.stream()
                 .map(localTime -> timeZero.until(localTime, timeUnit))
                 .collect(Collectors.toList());
     }
 
-    private List<LocalDateTime> getSampleByFilter(List<String[]> rows, Predicate<String[]> filter, int valueColumn) {
+    private List<LocalDateTime> getSampleByFilter(List<String[]> rows, Predicate<String[]> filter, int targetColumn) {
         DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         return rows.stream()
                 .filter(filter)
-                .map(row -> row[valueColumn])
+                .map(row -> row[targetColumn])
                 .map(departure -> LocalDateTime.parse(departure, dateTimeFormat))
                 .sorted()
                 .collect(Collectors.toList());
     }
 
-    private List<String[]> getRows(final String file) {
+    private List<String[]> getRows(final String file, Season season) {
         List<String[]> rows = new LinkedList<>();
+        DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            double numberOfLines = 0;
             String line;
             br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] columnValues = line.split(",");
-                rows.add(columnValues);
+                if(columnValues.length == 15){
+                    try{
+                        LocalDateTime departureLocalDateTime = LocalDateTime.parse(columnValues[2], dateTimeFormat);
+                        LocalDateTime arrivalLocalDateTime = LocalDateTime.parse(columnValues[9], dateTimeFormat);
+                        if(season.getMonths().contains(departureLocalDateTime.getMonthValue())
+                                && season.getMonths().contains(arrivalLocalDateTime.getMonthValue())){
+                            rows.add(columnValues);
+                            numberOfLines++;
+                        }
+                    } catch (DateTimeParseException e){
+                        System.out.println("Fila rota");
+                        continue;
+                    }
+                }
+                if(numberOfLines % 1000 == 0 && numberOfLines != 0){
+                    System.out.println("Se leyeron " + numberOfLines + " lineas");
+                }
             }
         } catch (IOException e) {
             throw new RuntimeException("Error al abrir el archivo");
